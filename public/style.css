@@ -1,0 +1,94 @@
+/* === SEVİYE 9.2 - GÜNCELLENMİŞ public/style.css === */
+
+/* Temel ayarlar, Giriş Ekranı, Sidebar (Değişiklik yok) */
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
+#login-screen { background: #fff; padding: 2rem; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block; z-index: 10; width: 300px; }
+#login-screen h2 { margin-top: 0; text-align: center; }
+#username-input, #room-input { width: 100%; padding: 0.8rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+#room-input { margin-top: 0.5rem; }
+#login-button { width: 100%; padding: 0.8rem; background: #007bff; color: white; border: none; border-radius: 4px; margin-top: 1rem; cursor: pointer; }
+#chat-container { display: none; height: 100vh; }
+#sidebar { width: 240px; background: #3f0e40; color: #fff; padding: 1rem; box-sizing: border-box; display: flex; flex-direction: column; height: 100vh; }
+#room-display { font-size: 1.1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #5a265b; color: #ccc; }
+#room-name { font-weight: bold; color: #fff; }
+#sidebar h3 { margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid #5a265b; padding-bottom: 0.5rem; }
+#user-list { list-style-type: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+#user-list li.user { color: #fff; font-weight: bold; padding: 0.4rem 0.2rem; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+#user-list li.user:hover { background: #5a265b; }
+#chat-area { flex-grow: 1; display: flex; flex-direction: column; background: #e5ddd5; height: 100vh; }
+#messages { list-style-type: none; margin: 0; padding: 1rem; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; }
+#messages > li { padding: 0; margin-bottom: 0.75rem; max-width: 70%; display: flex; flex-direction: column; }
+
+/* Sohbet Baloncukları (Değişiklik yok) */
+li.received { align-self: flex-start; align-items: flex-start; }
+li.received .message-bubble { background: #ffffff; color: #333; border-radius: 12px 12px 12px 0; }
+li.sent { align-self: flex-end; align-items: flex-end; }
+li.sent .message-bubble { background: #dcf8c6; color: #333; border-radius: 12px 12px 0 12px; }
+.message-bubble { padding: 0.6rem 0.8rem; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
+.message-bubble .username { font-size: 0.8rem; font-weight: bold; color: #007bff; margin-bottom: 0.25rem; display: block; }
+li.sent .message-bubble .username { display: none; }
+
+/* --- YENİ EKLENDİ: GÖRÜNTÜ (IMAGE) STİLLERİ --- */
+.message-bubble img {
+    max-width: 100%; /* Baloncuğa sığsın */
+    border-radius: 8px; /* Resmin kenarlarını yumuşat */
+    margin-top: 5px; /* Kullanıcı adından/mesajdan biraz ayrı dursun */
+}
+/* Sadece resim içeren baloncuklarda dolguyu (padding) sıfırla */
+.message-bubble.image-only {
+    padding: 0;
+    background: transparent; /* Baloncuk arka planını kaldır */
+    box-shadow: none;
+    border-radius: 8px; /* Direkt resmin kenarını yumuşat */
+}
+.message-bubble.image-only img {
+    margin-top: 0;
+    max-width: 250px; /* Resimler çok devasa olmasın */
+}
+
+/* Diğer Mesaj Tipleri (Değişiklik yok) */
+li.notification { align-self: center; background: #fffbef; color: #857a4e; border-radius: 20px; padding: 0.4rem 0.8rem !important; font-style: italic; font-size: 0.85rem; max-width: fit-content; }
+li.private-message { align-self: center; max-width: 80%; background: #f3e5f5; color: #6a1b9a; font-style: italic; border-radius: 5px; padding: 0.75rem 1rem !important; margin: 0.25rem 0; border-left: 5px solid #6a1b9a; }
+li.private-message .pm-user { font-weight: bold; font-style: normal; }
+li.private-message .pm-direction { margin-right: 0.25rem; }
+#typing-notification { height: 1.5rem; padding: 0 1rem; font-style: italic; color: #aaa; background: #e5ddd5; }
+
+/* --- GÜNCELLENDİ: SOHBET FORMU --- */
+#form { 
+    background: #f0f0f0; 
+    padding: 0.5rem 0.75rem; /* Sağa sola boşluğu biraz azalttık */
+    display: flex; 
+    border-top: 1px solid #ddd;
+    align-items: center; /* YENİ: Butonları ve kutuyu dikeyde ortala */
+}
+#input { 
+    border: 1px solid #ccc; padding: 0.75rem; 
+    flex-grow: 1; border-radius: 2rem; 
+    margin-right: 0.5rem; 
+    background: #fff; 
+}
+#input:focus { outline: none; border-color: #007bff; }
+
+/* --- YENİ EKLENDİ: DOSYA YÜKLEME BUTONLARI --- */
+/* 1. Çirkin "Dosya Seç" butonunu tamamen gizle */
+#file-input {
+    display: none;
+}
+/* 2. Onun yerine 'label' etiketini güzel bir buton yap */
+#file-label {
+    font-size: 1.5rem; /* İkonu büyüt */
+    padding: 0 0.5rem;
+    cursor: pointer;
+    color: #555;
+    transition: color 0.2s;
+}
+#file-label:hover {
+    color: #007bff; /* Üzerine gelince mavi yap */
+}
+
+/* 3. Gönder Butonu (Artık ID'si var) */
+#send-button { 
+    background: #007bff; border: none; padding: 0 1.25rem; 
+    height: 2.75rem; /* YENİ: Sabit bir yükseklik verelim (input ile aynı) */
+    border-radius: 2rem; color: #fff; cursor: pointer;
+}
