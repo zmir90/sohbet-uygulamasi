@@ -2,11 +2,8 @@
 <html>
 <head>
     <title>Süper Sohbet v10.5 (Mobil Uyumlu)</title>
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <link rel="stylesheet" href="/style.css">
-    
 </head>
 <body>
 
@@ -20,24 +17,20 @@
     </div>
 
     <div id="chat-container">
-        
+
         <div id="sidebar">
             <div id="room-display">
                 Oda: <span id="room-name">...</span>
             </div>
             <h3>Aktif Kullanıcılar</h3>
-            <ul id="user-list">
-                </ul>
+            <ul id="user-list"></ul>
         </div>
-        
-        <div id="chat-area">
-            
-            <button id="menu-toggle">
-                &#9776; </button>
-            
-            <ul id="messages">
-                </ul>
 
+        <div id="chat-area">
+
+            <button id="menu-toggle">&#9776;</button>
+
+            <ul id="messages"></ul>
             <div id="typing-notification"></div>
 
             <form id="form" action="">
@@ -47,11 +40,10 @@
                 <button id="send-button">Gönder</button>
             </form>
         </div>
-        
+
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/client.js"></script>
-
 </body>
 </html>
