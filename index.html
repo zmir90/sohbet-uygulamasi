@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Süper Sohbet v7 (Temizlendi)</title>
+    <title>Süper Sohbet v10.5 (Mobil Uyumlu)</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <link rel="stylesheet" href="/style.css">
     
@@ -29,25 +31,26 @@
         </div>
         
         <div id="chat-area">
+            
+            <button id="menu-toggle">
+                &#9776; </button>
+            
             <ul id="messages">
                 </ul>
-            <div id="typing-notification">
-                </div>
-            <form id="form" action="">
-            <input id="input" placeholder="Mesajınızı yazın..." autocomplete="off" />
 
-            <label for="file-input" id="file-label">
-                📎
-            </label>
-            <input type="file" id="file-input" accept="image/*" />
-            <button id="send-button">Gönder</button>
+            <div id="typing-notification"></div>
+
+            <form id="form" action="">
+                <input id="input" placeholder="Mesajınızı yazın..." autocomplete="off" />
+                <label for="file-input" id="file-label">📎</label>
+                <input type="file" id="file-input" accept="image/*" />
+                <button id="send-button">Gönder</button>
             </form>
         </div>
         
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    
     <script src="/client.js"></script>
 
 </body>
