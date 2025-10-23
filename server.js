@@ -1,99 +1,88 @@
-// === SEVİYE 9.3 - GÜNCELLENMİŞ SERVER.JS ===
+// === SEVİYE 11.2 - GÜNCELLENMİŞ SERVER.JS (PostgreSQL) ===
+
+// --- YENİ EKLENDİ: Gizli Bilgileri Yükle ---
+// Bu satır EN ÜSTTE olmalı. Faz 11.1'de oluşturduğumuz '.env' dosyasını okur
+// ve içindeki DATABASE_URL'i 'process.env' içine yükler.
+require('dotenv').config();
 
 // --- 1. Adım: Gerekli Kütüphaneler ---
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
-const sqlite3 = require('sqlite3').verbose(); 
-// --- YENİ EKLENDİ: Dosya Yükleme Yardımcısı ---
 const multer = require('multer');
-// --- YENİ EKLENDİ: Dosya Yolu Yardımcısı ---
-// (Dosya isimlerini ve yollarını güvenli bir şekilde birleştirmek için)
 const path = require('path'); 
+// --- YENİ EKLENDİ: PostgreSQL Kütüphanesi ---
+const { Pool } = require('pg'); // 'sqlite3' kütüphanesini sildik
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 // --- Statik Dosya Servisi (Değişiklik Yok) ---
-// 'public' klasörünü dünyaya açar. '/uploads' klasörü de 'public' içinde
-// olduğu için, buraya yüklenen resimlere /uploads/resim.png olarak erişilebilir.
 app.use(express.static('public'));
 
-// --- YENİ EKLENDİ: MULTER (DOSYA YÜKLEME) AYARLARI ---
-
-// 1. Resimleri Nereye Kaydedeceğimizi Belirle
+// --- Multer (Dosya Yükleme) Ayarları (Değişiklik Yok) ---
 const storage = multer.diskStorage({
-  // Hedef klasör: 'public/uploads' klasörü
-  destination: (req, file, cb) => {
-    cb(null, 'public/uploads/');
-  },
-  // Dosya Adı: Benzersiz bir isim oluştur
-  // (Orijinal isim + O anın milisaniye değeri + Orijinal uzantı)
-  // örn: kedi.png -> kedi-1678886598512.png
+  destination: (req, file, cb) => cb(null, 'public/uploads/'),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
-
-// 2. 'Multer' yardımcısını bu ayarlarla yapılandır
-//    'upload.single('image')' -> "Sadece 1 dosya al, ve o dosyanın adı 'image' olacak"
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limit: 5 Megabyte
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB Limit
   fileFilter: (req, file, cb) => {
-    // Sadece resim dosyalarına izin ver (jpeg, png, gif)
     const filetypes = /jpeg|jpg|png|gif/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error("Hata: Sadece resim dosyaları yüklenebilir (jpeg, png, gif)!"));
+    if (mimetype && extname) return cb(null, true);
+    cb(new Error("Hata: Sadece resim dosyaları yüklenebilir!"));
   }
-}).single('image'); // 'image', client.js'ten göndereceğimiz dosyanın "alan adı"
+}).single('image');
 
-// --- BİTTİ: MULTER AYARLARI ---
-
-
-// --- Sunucunun "Anlık Hafızası" (Defter) ---
+// --- Sunucunun "Anlık Hafızası" (Defter) (Değişiklik Yok) ---
 let connectedUsers = {};
 
-// --- Sunucunun "Kalıcı Hafızası" (Veritabanı) ---
-const db = new sqlite3.Database('./database.db', (err) => {
-  if (err) console.error('Veritabanı bağlantı hatası:', err.message);
-  else console.log('Veritabanına (database.db) başarıyla bağlanıldı.');
-});
-// Tabloyu oluştur (Değişiklik yok)
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS messages (...)`, (err) => { /* ...içerik aynı... */ });
-});
-// (Yukarıdaki CREATE TABLE kodunu kısa tuttum, sizde tamamı olmalı)
-// Tam CREATE TABLE kodu:
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    room TEXT NOT NULL,
-    username TEXT NOT NULL,
-    message TEXT NOT NULL,
-    timestamp DATETIME DEFAULT (datetime('now','localtime'))
-  )`, (err) => {
-    if (err) console.error('Tablo oluşturulurken hata:', err.message);
-  });
+// --- YENİ: Sunucunun "Kalıcı Hafızası" (PostgreSQL Pool) ---
+// 'sqlite3' bağlantısını sildik.
+// Artık 'pg' Kütüphanesinin "Pool" (Bağlantı Havuzu) özelliğini kullanıyoruz.
+// Bağlantı adresini (DATABASE_URL) '.env' dosyasından (process.env) okur.
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Neon.tech için bu ayar gerekebilir
+  }
 });
 
+// Veritabanına bağlanmayı dene ve tabloyu oluştur
+(async () => {
+  try {
+    await pool.connect(); // Bağlantıyı test et
+    console.log('Neon (PostgreSQL) veritabanına başarıyla bağlanıldı.');
+    
+    // YENİ: PostgreSQL uyumlu 'messages' tablosu oluşturma komutu
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        room TEXT NOT NULL,
+        username TEXT NOT NULL,
+        message TEXT NOT NULL,
+        timestamp TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    console.log("'messages' tablosu başarıyla oluşturuldu/bulundu (PostgreSQL).");
+  } catch (err) {
+    console.error('Veritabanı bağlantı veya tablo oluşturma hatası:', err);
+  }
+})();
+// --- BİTTİ: Kalıcı Hafıza ---
 
 // --- Yardımcı Fonksiyonlar (Değişiklik Yok) ---
-function getUsersInRoom(roomName) { /* ...içerik aynı... */ return []; }
-function findSocketIdByUsername(username) { /* ...içerik aynı... */ return null; }
-// Gerçek fonksiyonlar (kısa versiyonları değil)
 function getUsersInRoom(roomName) {
   let users = [];
   for (const id in connectedUsers) {
-    if (connectedUsers[id].room === roomName) {
-      users.push(connectedUsers[id].username);
-    }
+    if (connectedUsers[id].room === roomName) users.push(connectedUsers[id].username);
   }
   return users;
 }
@@ -104,47 +93,27 @@ function findSocketIdByUsername(username) {
   return null; 
 }
 
-
-// --- 3. Adım: Ana Sayfayı Sunma (Değişiklik Yok) ---
+// --- 3. Adım: Ana Sayfa ve Yükleme Kapısı (Değişiklik Yok) ---
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-
-
-// --- YENİ EKLENDİ: HTTP KAPISI (ENDPOINT) ---
-// YENİ "Resim Kabul Kapısı"
-// 'client.js' (sinir sistemi) bir dosyayı '/upload' adresine POST ettiğinde...
 app.post('/upload', (req, res) => {
-  // 1. 'multer' (upload) yardımcısını çağır
   upload(req, res, (err) => {
     if (err) {
-      // 2. Bir hata oluştuysa (örn: dosya 5MB'tan büyük veya resim değil)
-      console.error('Dosya yükleme hatası:', err.message);
-      // Hata mesajını 'client.js'e geri gönder
-      res.status(400).json({ error: err.message });
-    } else {
-      // 3. Dosya başarıyla 'public/uploads' klasörüne kaydedildiyse...
-      if (req.file == undefined) {
-        return res.status(400).json({ error: 'Dosya seçilmedi!' });
-      }
-      
-      // 4. Resmin yeni adresini (URL) oluştur.
-      //    (örn: /uploads/image-1678886598512.png)
-      const imageUrl = `/uploads/${req.file.filename}`;
-      
-      // 5. Bu adresi 'client.js'e JSON formatında geri gönder.
-      res.status(200).json({ imageUrl: imageUrl });
+      return res.status(400).json({ error: err.message });
     }
+    if (req.file == undefined) {
+      return res.status(400).json({ error: 'Dosya seçilmedi!' });
+    }
+    res.status(200).json({ imageUrl: `/uploads/${req.file.filename}` });
   });
 });
 
-
-// --- 4. Adım: Sohbet Sihirbazı (Socket.io) ---
-// (Bu bölümde HİÇBİR değişiklik yok. Socket.io'nun resim yüklendiğinden haberi bile yok.
-//  O sadece '/uploads/resim.png' şeklinde bir 'chat message' (metin) alacak.)
+// --- 4. Adım: Sohbet Sihirbazı (BÜYÜK GÜNCELLEME) ---
 io.on('connection', (socket) => {
   
-  socket.on('join chat', (data) => { /* ...içerik Seviye 6.3 ile aynı... */ 
+  // --- GÜNCELLENDİ: ODAYA KATILMA (PostgreSQL'den Geçmişi Yükle) ---
+  socket.on('join chat', (data) => {
     const { username, room } = data; 
     socket.join(room); 
     socket.username = username;
@@ -155,25 +124,39 @@ io.on('connection', (socket) => {
     io.to(room).emit('update user list', getUsersInRoom(room));
     socket.broadcast.to(room).emit('user joined', username);
 
-    const sql = `SELECT username, message, timestamp FROM messages WHERE room = ? ORDER BY timestamp DESC LIMIT 50`;
-    db.all(sql, [room], (err, rows) => {
-      if (err) {
-        console.error('Mesaj geçmişi çekilirken hata:', err.message);
-      } else {
-        socket.emit('load history', rows.reverse());
+    // YENİ: MESAJ GEÇMİŞİNİ PostgreSQL'den YÜKLE
+    (async () => {
+      try {
+        // YENİ SQL SÖZDİZİMİ: Soru işaretleri (?) yerine $1, $2 kullanılır.
+        // Ve DESC yerine ASC yapıp yollamak daha kolaydır (zaten öyle yapıyormuşuz).
+        const sql = `SELECT username, message, timestamp 
+                     FROM messages 
+                     WHERE room = $1 
+                     ORDER BY timestamp ASC 
+                     LIMIT 50`;
+                     
+        // YENİ SORGULAMA YÖNTEMİ: await pool.query(...)
+        const history = await pool.query(sql, [room]);
+        
+        // YENİ SONUÇ YÖNTEMİ: Sonuçlar 'rows' (satırlar) içindedir.
+        socket.emit('load history', history.rows);
+        console.log(`'${room}' odası için ${history.rows.length} adet geçmiş mesaj yüklendi (PostgreSQL).`);
+      } catch (err) {
+        console.error('Mesaj geçmişi çekilirken hata (PostgreSQL):', err);
       }
-    });
+    })();
   });
 
-  socket.on('typing', () => { /* ...içerik Seviye 6.3 ile aynı... */ 
+  // --- "Yazıyor..." Komutları (Değişiklik Yok) ---
+  socket.on('typing', () => {
     socket.broadcast.to(socket.room).emit('user typing', socket.username);
   });
-
-  socket.on('stop typing', () => { /* ...içerik Seviye 6.3 ile aynı... */ 
+  socket.on('stop typing', () => {
     socket.broadcast.to(socket.room).emit('stop typing', socket.username);
   });
 
-  socket.on('chat message', (msg) => { /* ...içerik Seviye 6.3 ile aynı... */ 
+  // --- GÜNCELLENDİ: GENEL MESAJ GÖNDERME (PostgreSQL'e Kaydet) ---
+  socket.on('chat message', (msg) => {
     if (!socket.username || !socket.room) return; 
 
     socket.broadcast.to(socket.room).emit('stop typing', socket.username);
@@ -181,33 +164,38 @@ io.on('connection', (socket) => {
     const messageData = { username: socket.username, message: msg };
     io.to(socket.room).emit('chat message', messageData);
     
-    const sql = `INSERT INTO messages (room, username, message) VALUES (?, ?, ?)`;
-    db.run(sql, [socket.room, socket.username, msg], (err) => {
-      if (err) console.error('Mesaj veritabanına kaydedilirken hata:', err.message);
+    // YENİ: MESAJI VERİTABANINA KAYDET (PostgreSQL)
+    const sql = `INSERT INTO messages (room, username, message) VALUES ($1, $2, $3)`;
+    
+    // YENİ SORGULAMA YÖNTEMİ: pool.query (callback ile)
+    pool.query(sql, [socket.room, socket.username, msg], (err, res) => {
+      if (err) {
+        console.error('Mesaj veritabanına kaydedilirken hata (PostgreSQL):', err);
+      } else {
+        console.log(`Mesaj kaydedildi: [${socket.room}] ${socket.username}: ${msg} (PostgreSQL)`);
+      }
     });
   });
 
-  socket.on('private message', (data) => { /* ...içerik Seviye 6.3 ile aynı... */ 
+  // --- Özel Mesaj Gönderme (Değişiklik Yok) ---
+  socket.on('private message', (data) => {
     const { to, message } = data;
     const from = socket.username;
     const targetSocketId = findSocketIdByUsername(to);
-
     if (targetSocketId) {
       io.to(targetSocketId).emit('private message', { from, message });
       socket.emit('private message', { to, message });
     } else {
-      socket.emit('notification', {
-        text: `Hata: '${to}' adlı kullanıcı bulunamadı veya çevrimdışı.`
-      });
+      socket.emit('notification', { text: `Hata: '${to}' adlı kullanıcı bulunamadı.` });
     }
   });
 
-  socket.on('disconnect', () => { /* ...içerik Seviye 6.3 ile aynı... */ 
+  // --- Bağlantı Kesme (Değişiklik Yok) ---
+  socket.on('disconnect', () => {
     const userData = connectedUsers[socket.id];
     if (userData) { 
       const { username, room } = userData; 
       delete connectedUsers[socket.id];
-
       io.to(room).emit('update user list', getUsersInRoom(room));
       socket.broadcast.to(room).emit('user left', username);
       socket.broadcast.to(room).emit('stop typing', username);
@@ -215,13 +203,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- 5. Adım: Dükkanı Açma (GÜNCELLENDİ) ---
-// Render gibi platformlar, kullanmamız gereken portu bize 'process.env.PORT'
-// adında bir "çevre değişkeni" ile söyler.
-// Eğer bu değişken tanımlı DEĞİLSE (yani kendi bilgisayarımızdaysak), 3000'i kullanırız.
+// --- 5. Adım: Dükkanı Açma (Değişiklik Yok) ---
+// (Bu, Faz 10.1'de güncellediğimiz esnek port)
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
-  // Konsola artık 3000 değil, o an hangi portu dinliyorsak onu yazdırıyoruz.
   console.log(`Sunucu ${PORT} portunda çalışıyor...`);
 });
