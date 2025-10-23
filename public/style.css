@@ -1,67 +1,57 @@
-/* === SEVİYE 13.3 - GÜNCELLENMİŞ public/style.css === */
+/* === SEVİYE 14.1 - GÜNCELLENMİŞ public/style.css === */
 
-/* Temel ayarlar */
+/* ... (body, auth, room-selection, chat-container, chat-area, messages, baloncuklar vb. üst kısımların hepsi aynı) ... */
 body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f4; overflow: hidden; }
-
-/* --- YENİ: KİMLİK DOĞRULAMA (AUTH) & ODA SEÇİM EKRANLARI --- */
-#auth-container, #room-selection-container {
-    background: #fff; padding: 2rem; position: fixed;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    width: 320px; /* Biraz daha geniş */
-    box-sizing: border-box;
-    z-index: 10;
-}
+#auth-container, #room-selection-container { background: #fff; padding: 2rem; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 320px; box-sizing: border-box; z-index: 10; }
 #auth-container h2, #room-selection-container h2 { margin-top: 0; text-align: center; margin-bottom: 1.5rem; color: #333; }
-#auth-container form input, #room-selection-container form input {
-    width: 100%; padding: 0.8rem; border: 1px solid #ccc;
-    border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem;
-}
-#auth-container form button, #room-selection-container form button[type="submit"] {
-    width: 100%; padding: 0.8rem; background: #007bff;
-    color: white; border: none; border-radius: 4px; cursor: pointer;
-    font-size: 1rem; transition: background 0.2s;
-}
-#auth-container form button:hover, #room-selection-container form button[type="submit"]:hover {
-    background: #0056b3;
-}
-#auth-container p, #room-selection-container p {
-    text-align: center; margin-top: 1rem; font-size: 0.9rem; color: #555;
-}
-#auth-container p a, #room-selection-container p a {
-    color: #007bff; text-decoration: none; font-weight: bold;
-}
-#auth-container p a:hover, #room-selection-container p a:hover {
-    text-decoration: underline;
-}
-.error-message { color: #dc3545; font-size: 0.85rem; min-height: 1.2em; /* Hata yokken boşluk kalsın */ }
+#auth-container form input, #room-selection-container form input { width: 100%; padding: 0.8rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; }
+#auth-container form button, #room-selection-container form button[type="submit"] { width: 100%; padding: 0.8rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+#auth-container form button:hover, #room-selection-container form button[type="submit"]:hover { background: #0056b3; }
+#auth-container p, #room-selection-container p { text-align: center; margin-top: 1rem; font-size: 0.9rem; color: #555; }
+#auth-container p a, #room-selection-container p a { color: #007bff; text-decoration: none; font-weight: bold; }
+#auth-container p a:hover, #room-selection-container p a:hover { text-decoration: underline; }
+.error-message { color: #dc3545; font-size: 0.85rem; min-height: 1.2em; }
 .success-message { color: #28a745; font-size: 0.85rem; }
-
-/* Oda seçimi ekranındaki çıkış butonu */
-#logout-button-room {
-    width: 100%; padding: 0.6rem; background: #6c757d; /* Gri */
-    color: white; border: none; border-radius: 4px; cursor: pointer;
-    font-size: 0.9rem; margin-top: 1rem; transition: background 0.2s;
-}
+#logout-button-room { width: 100%; padding: 0.6rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; margin-top: 1rem; transition: background 0.2s; }
 #logout-button-room:hover { background: #5a6268; }
-
-
-/* --- ANA SOHBET YAPISI (Stiller çoğunlukla aynı, çıkış butonu eklendi) --- */
 #chat-container { display: none; height: 100vh; display: flex; }
 #sidebar { width: 240px; background: #3f0e40; color: #fff; padding: 1rem; box-sizing: border-box; display: flex; flex-direction: column; height: 100vh; transition: transform 0.3s ease-in-out; }
-/* Sidebar'daki Çıkış Butonu */
-#logout-button-chat {
-    background: #dc3545; /* Kırmızı */ color: white; border: none;
-    padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem;
-    cursor: pointer; font-size: 0.85rem; transition: background 0.2s;
-}
+#logout-button-chat { background: #dc3545; color: white; border: none; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; }
 #logout-button-chat:hover { background: #c82333; }
 #room-display { font-size: 1.1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #5a265b; color: #ccc; }
 #room-name { font-weight: bold; color: #fff; }
-#sidebar h3 { margin-top: 0; /* Tekrar üste aldık */ margin-bottom: 0.5rem; border-bottom: 1px solid #5a265b; padding-bottom: 0.5rem; }
+#sidebar h3 { margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid #5a265b; padding-bottom: 0.5rem; }
 #user-list { list-style-type: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
-#user-list li.user { color: #fff; font-weight: bold; padding: 0.4rem 0.2rem; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
-#user-list li.user:hover { background: #5a265b; }
+
+/* --- GÜNCELLENDİ: Kullanıcı Listesi Öğesi --- */
+#user-list li.user {
+    color: #fff;
+    font-weight: bold;
+    padding: 0.4rem 0.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+    /* YENİ: Nokta ile ismi yan yana getirmek için */
+    display: flex;
+    align-items: center;
+}
+#user-list li.user:hover {
+    background: #5a265b;
+}
+
+/* --- YENİ EKLENDİ: Çevrimiçi Durum Noktası --- */
+.online-indicator {
+    display: inline-block; /* Yan yana durması için */
+    width: 8px;
+    height: 8px;
+    background-color: #4CAF50; /* Yeşil renk */
+    border-radius: 50%; /* Daire yap */
+    margin-right: 8px; /* İsimden önceki boşluk */
+    flex-shrink: 0; /* Küçülmesini engelle */
+}
+
+
+/* --- Sohbet Alanı (Devamı aynı) --- */
 #chat-area { flex-grow: 1; display: flex; flex-direction: column; background: #e5ddd5; height: 100vh; position: relative; }
 #messages { list-style-type: none; margin: 0; padding: 1rem; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; }
 #messages > li { padding: 0; margin-bottom: 0.75rem; max-width: 70%; display: flex; flex-direction: column; }
@@ -69,7 +59,7 @@ li.received { align-self: flex-start; align-items: flex-start; }
 li.received .message-bubble { background: #ffffff; color: #333; border-radius: 12px 12px 12px 0; }
 li.sent { align-self: flex-end; align-items: flex-end; }
 li.sent .message-bubble { background: #dcf8c6; color: #333; border-radius: 12px 12px 0 12px; }
-.message-bubble { padding: 0.6rem 0.8rem; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-wrap: break-word; /* Uzun mesajlar taşmasın */ }
+.message-bubble { padding: 0.6rem 0.8rem; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-wrap: break-word; }
 .message-bubble .username { font-size: 0.8rem; font-weight: bold; color: #007bff; margin-bottom: 0.25rem; display: block; }
 li.sent .message-bubble .username { display: none; }
 .message-bubble img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
@@ -88,15 +78,15 @@ li.private-message .pm-direction { margin-right: 0.25rem; }
 #file-label:hover { color: #007bff; }
 #send-button { background: #007bff; border: none; padding: 0 1.25rem; height: 2.75rem; border-radius: 2rem; color: #fff; cursor: pointer; }
 
-/* --- MOBİL UYUMLULUK --- */
+/* --- MOBİL UYUMLULUK (Aynı) --- */
 #menu-toggle { display: none; }
 #sidebar.sidebar-visible { /* (Bu, @media içinde anlam kazanacak) */ }
 @media (max-width: 768px) {
-    #auth-container, #room-selection-container { width: 90%; } /* Auth ekranlarını da mobil uyumlu yap */
-    #chat-container { display: none; /* JS ile flex yapılacak */ flex-direction: column; /* Mobil için varsayılanı değiştir */ position: relative; } /* YENİ: Stack context için */
+    #auth-container, #room-selection-container { width: 90%; }
+    #chat-container { display: none; flex-direction: column; position: relative; }
     #sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 1000; width: 250px; transform: translateX(-250px); box-shadow: 4px 0 10px rgba(0,0,0,0.2); }
     #sidebar.sidebar-visible { transform: translateX(0); }
-    #chat-area { width: 100%; height: 100vh; flex-grow: 1; /* YENİ */ }
+    #chat-area { width: 100%; height: 100vh; flex-grow: 1; }
     #menu-toggle { display: block; position: absolute; top: 10px; left: 10px; z-index: 1001; font-size: 1.25rem; background: #fff; border: 1px solid #ccc; border-radius: 5px; padding: 0.25rem 0.5rem; cursor: pointer; opacity: 0.8; }
     #messages { padding-top: 3.5rem; }
     #messages > li { max-width: 85%; }
