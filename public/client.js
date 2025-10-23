@@ -1,11 +1,10 @@
-// === NİHAİ DÜZELTME - public/client.js ===
+// === SEVİYE 13 - NİHAİ TEMİZ client.js ===
 
 let socket = null;
 let currentUsername = '';
 
-// --- 1. KISIM: HTML Elemanlarını Seçme (Tek Tanımlamalar) ---
-const authContainer = document.getElementById('auth-container'); // Eklendi
-const loginScreen = document.getElementById('login-screen');
+// --- 1. KISIM: HTML Elemanlarını Seçme ---
+const authContainer = document.getElementById('auth-container');
 const loginFormContainer = document.getElementById('login-form-container');
 const registerFormContainer = document.getElementById('register-form-container');
 const loginForm = document.getElementById('login-form');
@@ -23,7 +22,7 @@ const roomSelectionContainer = document.getElementById('room-selection-container
 const roomForm = document.getElementById('room-form');
 const roomInput = document.getElementById('room-input');
 const logoutButtonRoom = document.getElementById('logout-button-room');
-const chatContainer = document.getElementById('chat-container'); // SADECE BURADA
+const chatContainer = document.getElementById('chat-container');
 const sidebar = document.getElementById('sidebar');
 const menuToggle = document.getElementById('menu-toggle');
 const logoutButtonChat = document.getElementById('logout-button-chat');
@@ -56,7 +55,7 @@ registerForm.addEventListener('submit', async (e) => {
         const response = await fetch('/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }), });
         const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Kayıt başarısız.');
         registerSuccessEl.textContent = data.message + ' Şimdi giriş yapabilirsiniz.'; registerForm.reset();
-        setTimeout(() => { showLoginLink.click(); }, 1000);
+        setTimeout(() => { showLoginLink.click(); }, 1500); // Başarı mesajını görmek için biraz bekle
     } catch (error) { showError(registerErrorEl, error.message); }
 });
 loginForm.addEventListener('submit', async (e) => {
@@ -84,7 +83,6 @@ async function checkAuthOnLoad() {
     } catch (error) { console.error('Oturum kontrol hatası:', error); showScreen(authContainer); }
 }
 
-
 // --- 4. KISIM: Socket.IO ve Sohbet Mantığı ---
 function initializeSocket() {
     if (socket) return;
@@ -105,7 +103,7 @@ function initializeSocket() {
                 if (isImageMessage) messageContent = `<img src="${data.message}" alt="Yüklenen Resim">`; else messageContent = data.message;
                 const editedIndicator = data.edited_at ? '<span class="edited-indicator">(düzenlendi)</span>' : '';
                 item.innerHTML = `<div class="message-bubble ${isImageMessage ? 'image-only' : ''}"><span class="username">${data.username}</span><span class="message-text">${messageContent}</span> ${editedIndicator}</div>`;
-                if (data.username === currentUsername && !isImageMessage) {
+                if (data.username === currentUsername && !isImageMessage && !data.is_deleted) { // Silinmişse buton ekleme
                     const actionsDiv = document.createElement('div'); actionsDiv.classList.add('message-actions');
                     actionsDiv.innerHTML = `<button class="edit-btn" title="Düzenle">✏️</button><button class="delete-btn" title="Sil">🗑️</button>`;
                     item.appendChild(actionsDiv);
@@ -157,10 +155,11 @@ messages.addEventListener('click', (e) => {
         if (messageItem && socket) { const messageId = messageItem.dataset.messageId; if (confirm('Bu mesajı silmek istediğinizden emin misiniz?')) { socket.emit('delete message', messageId); } }
     } else if (e.target && e.target.classList.contains('edit-btn')) {
         const messageItem = e.target.closest('li[data-message-id]');
-        if (messageItem && socket) { const messageId = messageItem.dataset.messageId; const messageTextElement = messageItem.querySelector('.message-text'); const currentMessage = messageTextElement ? messageTextElement.textContent : ''; const newMessage = prompt('Mesajınızı düzenleyin:', currentMessage); if (newMessage !== null && newMessage !== currentMessage) { socket.emit('edit message', { messageId, newMessage }); } }
+        if (messageItem && socket) { const messageId = messageItem.dataset.messageId; const messageTextElement = messageItem.querySelector('.message-text'); const currentMessage = messageTextElement ? messageTextElement.textContent : ''; const newMessage = prompt('Mesajınızı düzenleyin:', currentMessage); if (newMessage !== null && newMessage.trim() !== currentMessage) { socket.emit('edit message', { messageId, newMessage: newMessage.trim() }); } } // trim() eklendi
     }
 });
-userList.addEventListener('click', (e) => { if (e.target && e.target.matches('li.user')) { const targetUsernameRaw = e.target.textContent; const targetUsername = targetUsernameRaw.startsWith(' ') ? targetUsernameRaw.substring(1) : targetUsernameRaw; if (targetUsername !== currentUsername && socket) { const message = prompt(`Kime: ${targetUsername} - Fısıltınız:`); if (message) socket.emit('private message', { to: targetUsername, message: message }); } } });
+userList.addEventListener('click', (e) => { if (e.target && e.target.matches('li.user')) { const nameElement = e.target.childNodes.length > 1 ? e.target.childNodes[1] : e.target; const targetUsername = nameElement.textContent.trim(); if (targetUsername !== currentUsername && socket) { const message = prompt(`Kime: ${targetUsername} - Fısıltınız:`); if (message) socket.emit('private message', { to: targetUsername, message: message }); } } }); // Kullanıcı adı alımı düzeltildi
+
 
 // --- UYGULAMAYI BAŞLAT ---
 document.addEventListener('DOMContentLoaded', checkAuthOnLoad);

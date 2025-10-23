@@ -3,7 +3,7 @@
 <head>
     <title>Süper Sohbet v13 (Giriş Sistemi)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/style.css?v=13"> </head>
+    <link rel="stylesheet" href="/style.css?v=13_final"> </head>
 <body>
 
     <div id="auth-container">
@@ -17,7 +17,6 @@
             </form>
             <p>Hesabın yok mu? <a href="#" id="show-register">Kayıt Ol</a></p>
         </div>
-
         <div id="register-form-container" style="display: none;">
             <h2>Kayıt Ol</h2>
             <form id="register-form">
@@ -37,15 +36,13 @@
             <input type="text" id="room-input" placeholder="Oda Adı Girin (örn: genel)" required>
             <button type="submit">Odaya Katıl</button>
         </form>
-        <button id="logout-button-room">Çıkış Yap</button> </div>
-
+        <button id="logout-button-room">Çıkış Yap</button>
+    </div>
 
     <div id="chat-container" style="display: none;">
         <div id="sidebar">
             <button id="logout-button-chat">Çıkış Yap</button>
-            <div id="room-display">
-                Oda: <span id="room-name">...</span>
-            </div>
+            <div id="room-display"> Oda: <span id="room-name">...</span> </div>
             <h3>Aktif Kullanıcılar</h3>
             <ul id="user-list"></ul>
         </div>
@@ -53,15 +50,14 @@
             <button id="menu-toggle">&#9776;</button>
             <ul id="messages"></ul>
             <div id="typing-notification"></div>
-            <form id="form" action="">
+            <form id="form">
                 <input id="input" placeholder="Mesajınızı yazın..." autocomplete="off" />
                 <label for="file-input" id="file-label">📎</label>
                 <input type="file" id="file-input" accept="image/*" />
-                <button id="send-button">Gönder</button>
-            </form>
+                <button type="submit" id="send-button">Gönder</button> </form>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/client.js?v=13"></script> </body>
+    <script src="/client.js?v=13_final"></script> </body>
 </html>
