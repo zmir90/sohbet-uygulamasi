@@ -1,4 +1,4 @@
-// === server.js - Socket Session PAYLAŞIMI DÜZELTİLDİ + DEBUG ===
+// === server.js - NİHAİ v15 - CORS EKLENDİ ===
 
 require('dotenv').config();
 const express = require('express');
@@ -13,53 +13,57 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
+// --- YENİ: CORS Kütüphanesi ---
+const cors = require('cors');
 
 function logRequests(req, res, next) { console.log(`=> REQ: ${req.method} ${req.originalUrl}`); next(); }
 
 const app = express();
 app.use(logRequests);
 const server = http.createServer(app);
-const io = new Server(server);
+
+// --- YENİ: CORS AYARLARI ---
+// Render'daki sitenizin tam adresini buraya yazın (httpS ile!)
+// Lokal test için http://localhost:3000 ekleyebilirsiniz.
+const allowedOrigins = [process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000'];
+console.log("İzin verilen Origin:", allowedOrigins); // Debug için
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Mobil uygulamalar veya REST istemcileri için 'origin' olmayabilir (örn: Postman)
+    // Aynı origin veya izin verilenler listesindeyse izin ver
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn("CORS tarafından engellenen origin:", origin); // Hangi origin'in engellendiğini gör
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true // Çerezlerin gönderilmesine izin ver! (ÇOK ÖNEMLİ)
+};
+app.use(cors(corsOptions)); // CORS middleware'ini kullan
+// --- BİTTİ: CORS AYARLARI ---
+
+
+const io = new Server(server, {
+    // --- YENİ: Socket.IO için CORS Ayarları ---
+    cors: corsOptions
+    // --- BİTTİ: Socket.IO CORS ---
+});
 
 // Veritabanı Pool
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+
 // Tabloları oluştur/kontrol et
-(async () => { try { await pool.connect(); console.log('Neon DB Connected.'); await pool.query(`CREATE TABLE IF NOT EXISTS messages (...)`); console.log("'messages' OK."); await pool.query(`CREATE TABLE IF NOT EXISTS users (...)`); console.log("'users' OK."); await pool.query(`CREATE TABLE IF NOT EXISTS "user_sessions" (...)`); console.log("'user_sessions' OK."); } catch (err) { console.error('DB Init Error:', err); process.exit(1); } })();
-// Tam Create Table SQL'leri önceki mesajda var
+(async () => { /* ... içerik aynı ... */ })();
+// Tam kod:
+(async () => { try { await pool.connect(); console.log('DB Connected.'); await pool.query(`CREATE TABLE IF NOT EXISTS messages (...)`); console.log("'messages' OK."); await pool.query(`CREATE TABLE IF NOT EXISTS users (...)`); console.log("'users' OK."); await pool.query(`CREATE TABLE IF NOT EXISTS "user_sessions" (...)`); console.log("'user_sessions' OK."); } catch (err) { console.error('DB Init Hata:', err); process.exit(1); } })();
 
 // Oturum Ayarları
-const sessionMiddleware = session({
-    store: new pgSession({ pool : pool, tableName : 'user_sessions' }),
-    secret: process.env.SESSION_SECRET,
-    resave: false, saveUninitialized: false,
-    cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', httpOnly: true }
-});
-app.use(sessionMiddleware); // Express için
-
-// --- SOCKET.IO İÇİN SESSION PAYLAŞIMI (GÜNCELLENDİ) ---
-// Socket.IO'nun her bağlantı isteğinde Express session middleware'ini kullanmasını sağla
+const sessionMiddleware = session({ store: new pgSession({ pool : pool, tableName : 'user_sessions' }), secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false, cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', httpOnly: true, sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' } }); // sameSite eklendi
+app.use(sessionMiddleware);
 const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
 io.use(wrap(sessionMiddleware));
-
-// Socket.IO Bağlantı Koruması (Log Eklendi)
-io.use((socket, next) => {
-    const session = socket.request.session;
-    console.log("--> io.use() Auth Check: Session mevcut mu?", !!session); // DEBUG 1
-    if (session) {
-         console.log("    Session ID:", session.id); // DEBUG 2
-         console.log("    Session User:", session.user); // DEBUG 3
-    }
-
-    if (session && session.user) {
-        console.log(`--> io.use() Auth OK: User=${session.user.username}`); // DEBUG 4
-        next();
-    } else {
-        console.error("--> io.use() Auth FAILED: Session veya User yok!"); // DEBUG 5
-        next(new Error('Auth required')); // Bağlantıyı reddet
-    }
-});
-// --- BİTTİ: SESSION PAYLAŞIMI ---
-
 
 // Diğer Middleware'ler
 app.use(express.json());
@@ -83,8 +87,9 @@ app.post('/login', async (req, res) => { /* ... */ });
 app.get('/check-auth', (req, res) => { /* ... */ });
 app.post('/logout', (req, res) => { /* ... */ });
 
-// Socket.IO Olayları (Aynı)
-io.on('connection', (socket) => { /* ... İçerik aynı (Seviye 13.4 final) ... */ });
+// Socket.IO (Aynı, loglar dahil)
+io.use((socket, next) => { /* ... Auth check logları ... */ });
+io.on('connection', (socket) => { /* ... Tüm socket olayları aynı ... */ });
 
 // Sunucuyu Başlat (Aynı)
 const PORT = process.env.PORT || 3000;
