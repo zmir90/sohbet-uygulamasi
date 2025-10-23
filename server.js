@@ -1,84 +1,88 @@
-// === SEVİYE 11.2 - GÜNCELLENMİŞ SERVER.JS (PostgreSQL) ===
+// === SEVİYE 12.2 - GÜNCELLENMİŞ SERVER.JS (Cloudinary) ===
 
-// --- YENİ EKLENDİ: Gizli Bilgileri Yükle ---
-// Bu satır EN ÜSTTE olmalı. Faz 11.1'de oluşturduğumuz '.env' dosyasını okur
-// ve içindeki DATABASE_URL'i 'process.env' içine yükler.
+// Gizli Bilgileri Yükle (.env dosyasını okur)
 require('dotenv').config();
 
 // --- 1. Adım: Gerekli Kütüphaneler ---
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
-const multer = require('multer');
+const multer = require('multer'); // Hala gerekli ama farklı kullanacağız
 const path = require('path'); 
-// --- YENİ EKLENDİ: PostgreSQL Kütüphanesi ---
-const { Pool } = require('pg'); // 'sqlite3' kütüphanesini sildik
+const { Pool } = require('pg'); // PostgreSQL
+// --- YENİ EKLENDİ: Cloudinary Kütüphanesi ---
+const cloudinary = require('cloudinary').v2;
+// --- YENİ EKLENDİ: Veri akışı için ---
+const streamifier = require('streamifier');
+
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 // --- Statik Dosya Servisi (Değişiklik Yok) ---
+// Not: 'public/uploads' klasörünü artık KULLANMAYACAĞIZ ama bu satır kalsın.
 app.use(express.static('public'));
 
-// --- Multer (Dosya Yükleme) Ayarları (Değişiklik Yok) ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/uploads/'),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// --- GÜNCELLENDİ: MULTER (DOSYA YÜKLEME) AYARLARI ---
+// Artık diski değil, HAFIZAYI (MemoryStorage) kullanacağız.
+// Dosya adını Cloudinary belirleyecek, biz burada ayarlamıyoruz.
+const storage = multer.memoryStorage(); // Diske değil, RAM'e yükle
+
 const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB Limit
+  storage: storage, // Hafıza depolamasını kullan
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limit: 5 Megabyte
   fileFilter: (req, file, cb) => {
+    // Sadece resim dosyalarına izin ver (Bu kısım aynı)
     const filetypes = /jpeg|jpg|png|gif/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     if (mimetype && extname) return cb(null, true);
     cb(new Error("Hata: Sadece resim dosyaları yüklenebilir!"));
   }
-}).single('image');
+}).single('image'); 
+// --- BİTTİ: MULTER AYARLARI ---
+
+
+// --- YENİ EKLENDİ: CLOUDINARY AYARLARI ---
+// '.env' dosyasından okuduğumuz API anahtarları ile Cloudinary'yi yapılandırıyoruz.
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true // HTTPS URL'leri kullan
+});
+// --- BİTTİ: CLOUDINARY AYARLARI ---
+
 
 // --- Sunucunun "Anlık Hafızası" (Defter) (Değişiklik Yok) ---
 let connectedUsers = {};
 
-// --- YENİ: Sunucunun "Kalıcı Hafızası" (PostgreSQL Pool) ---
-// 'sqlite3' bağlantısını sildik.
-// Artık 'pg' Kütüphanesinin "Pool" (Bağlantı Havuzu) özelliğini kullanıyoruz.
-// Bağlantı adresini (DATABASE_URL) '.env' dosyasından (process.env) okur.
+// --- Sunucunun "Kalıcı Hafızası" (PostgreSQL Pool) (Değişiklik Yok) ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Neon.tech için bu ayar gerekebilir
-  }
+  ssl: { rejectUnauthorized: false }
 });
-
-// Veritabanına bağlanmayı dene ve tabloyu oluştur
+// Tabloyu oluştur (Değişiklik Yok)
 (async () => {
   try {
-    await pool.connect(); // Bağlantıyı test et
+    await pool.connect();
     console.log('Neon (PostgreSQL) veritabanına başarıyla bağlanıldı.');
-    
-    // YENİ: PostgreSQL uyumlu 'messages' tablosu oluşturma komutu
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        room TEXT NOT NULL,
-        username TEXT NOT NULL,
-        message TEXT NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+        id SERIAL PRIMARY KEY, room TEXT NOT NULL, username TEXT NOT NULL,
+        message TEXT NOT NULL, timestamp TIMESTAMPTZ DEFAULT NOW()
+      )`);
     console.log("'messages' tablosu başarıyla oluşturuldu/bulundu (PostgreSQL).");
   } catch (err) {
     console.error('Veritabanı bağlantı veya tablo oluşturma hatası:', err);
   }
 })();
-// --- BİTTİ: Kalıcı Hafıza ---
 
 // --- Yardımcı Fonksiyonlar (Değişiklik Yok) ---
+function getUsersInRoom(roomName) { /* ...içerik aynı... */ return []; }
+function findSocketIdByUsername(username) { /* ...içerik aynı... */ return null; }
+// Gerçek fonksiyonlar
 function getUsersInRoom(roomName) {
   let users = [];
   for (const id in connectedUsers) {
@@ -93,26 +97,82 @@ function findSocketIdByUsername(username) {
   return null; 
 }
 
-// --- 3. Adım: Ana Sayfa ve Yükleme Kapısı (Değişiklik Yok) ---
+// --- 3. Adım: Ana Sayfa ---
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
+
+// --- GÜNCELLENDİ: YÜKLEME KAPISI (ENDPOINT) ---
+// Artık dosyayı diske değil, Cloudinary'ye gönderiyoruz
 app.post('/upload', (req, res) => {
+  
+  // 1. Önce 'multer' ile dosyayı hafızaya al
   upload(req, res, (err) => {
     if (err) {
+      // Multer hatası (boyut, tip vb.)
+      console.error('Multer yükleme hatası:', err.message);
       return res.status(400).json({ error: err.message });
     }
     if (req.file == undefined) {
+      // Dosya seçilmemişse
       return res.status(400).json({ error: 'Dosya seçilmedi!' });
     }
-    res.status(200).json({ imageUrl: `/uploads/${req.file.filename}` });
-  });
-});
 
-// --- 4. Adım: Sohbet Sihirbazı (BÜYÜK GÜNCELLEME) ---
+    // 2. YENİ: Cloudinary'ye Yükleme Fonksiyonu
+    let uploadFromBuffer = (buffer) => {
+      return new Promise((resolve, reject) => {
+        // Cloudinary'nin 'upload_stream' fonksiyonunu çağır
+        let cld_upload_stream = cloudinary.uploader.upload_stream(
+          {
+            // İsteğe bağlı: Resimleri belirli bir klasöre koyabiliriz
+            // folder: "sohbet-resimleri", 
+            // İsteğe bağlı: Resim boyutunu küçültebiliriz vb.
+            // transformation: [{ width: 500, height: 500, crop: "limit" }]
+          },
+          (error, result) => {
+            if (result) {
+              resolve(result); // Başarılı: Cloudinary sonucunu döndür
+            } else {
+              reject(error); // Başarısız: Hatayı döndür
+            }
+          }
+        );
+        // Hafızadaki dosyayı (buffer) Cloudinary'ye "akıt" (stream)
+        streamifier.createReadStream(buffer).pipe(cld_upload_stream);
+      });
+    };
+
+    // 3. Yükleme işlemini başlat
+    uploadFromBuffer(req.file.buffer)
+      .then(result => {
+        // 4. BAŞARILI: Cloudinary resmi yükledi ve bize URL verdi
+        console.log('Cloudinary yükleme başarılı:', result.secure_url);
+        // Cloudinary'nin verdiği GÜVENLİ (https) URL'i client'a gönder
+        res.status(200).json({ imageUrl: result.secure_url });
+      })
+      .catch(error => {
+        // 5. HATA: Cloudinary yüklemesi başarısız oldu
+        console.error('Cloudinary yükleme hatası:', error);
+        res.status(500).json({ error: 'Resim Cloudinary\'ye yüklenemedi.' });
+      });
+      
+  }); // multer upload bitişi
+}); // app.post('/upload') bitişi
+
+
+// --- 4. Adım: Sohbet Sihirbazı (Socket.io) ---
+// (Bu bölümde HİÇBİR değişiklik yok. O hala metin mesajı olarak 
+//  Cloudinary URL'ini alacak ve veritabanına kaydedecek.)
 io.on('connection', (socket) => {
   
-  // --- GÜNCELLENDİ: ODAYA KATILMA (PostgreSQL'den Geçmişi Yükle) ---
+  socket.on('join chat', (data) => { /* ...içerik Seviye 11.2 ile aynı... */ });
+  socket.on('typing', () => { /* ...içerik Seviye 11.2 ile aynı... */ });
+  socket.on('stop typing', () => { /* ...içerik Seviye 11.2 ile aynı... */ });
+  socket.on('chat message', (msg) => { /* ...içerik Seviye 11.2 ile aynı... */ });
+  socket.on('private message', (data) => { /* ...içerik Seviye 11.2 ile aynı... */ });
+  socket.on('disconnect', () => { /* ...içerik Seviye 11.2 ile aynı... */ });
+
+  // Tam kodlar (kısa versiyonları değil)
   socket.on('join chat', (data) => {
     const { username, room } = data; 
     socket.join(room); 
@@ -124,60 +184,26 @@ io.on('connection', (socket) => {
     io.to(room).emit('update user list', getUsersInRoom(room));
     socket.broadcast.to(room).emit('user joined', username);
 
-    // YENİ: MESAJ GEÇMİŞİNİ PostgreSQL'den YÜKLE
     (async () => {
       try {
-        // YENİ SQL SÖZDİZİMİ: Soru işaretleri (?) yerine $1, $2 kullanılır.
-        // Ve DESC yerine ASC yapıp yollamak daha kolaydır (zaten öyle yapıyormuşuz).
-        const sql = `SELECT username, message, timestamp 
-                     FROM messages 
-                     WHERE room = $1 
-                     ORDER BY timestamp ASC 
-                     LIMIT 50`;
-                     
-        // YENİ SORGULAMA YÖNTEMİ: await pool.query(...)
+        const sql = `SELECT username, message, timestamp FROM messages WHERE room = $1 ORDER BY timestamp ASC LIMIT 50`;
         const history = await pool.query(sql, [room]);
-        
-        // YENİ SONUÇ YÖNTEMİ: Sonuçlar 'rows' (satırlar) içindedir.
         socket.emit('load history', history.rows);
-        console.log(`'${room}' odası için ${history.rows.length} adet geçmiş mesaj yüklendi (PostgreSQL).`);
-      } catch (err) {
-        console.error('Mesaj geçmişi çekilirken hata (PostgreSQL):', err);
-      }
+      } catch (err) { console.error('Mesaj geçmişi çekilirken hata (PostgreSQL):', err); }
     })();
   });
-
-  // --- "Yazıyor..." Komutları (Değişiklik Yok) ---
-  socket.on('typing', () => {
-    socket.broadcast.to(socket.room).emit('user typing', socket.username);
-  });
-  socket.on('stop typing', () => {
-    socket.broadcast.to(socket.room).emit('stop typing', socket.username);
-  });
-
-  // --- GÜNCELLENDİ: GENEL MESAJ GÖNDERME (PostgreSQL'e Kaydet) ---
+  socket.on('typing', () => { socket.broadcast.to(socket.room).emit('user typing', socket.username); });
+  socket.on('stop typing', () => { socket.broadcast.to(socket.room).emit('stop typing', socket.username); });
   socket.on('chat message', (msg) => {
     if (!socket.username || !socket.room) return; 
-
     socket.broadcast.to(socket.room).emit('stop typing', socket.username);
-    
     const messageData = { username: socket.username, message: msg };
     io.to(socket.room).emit('chat message', messageData);
-    
-    // YENİ: MESAJI VERİTABANINA KAYDET (PostgreSQL)
     const sql = `INSERT INTO messages (room, username, message) VALUES ($1, $2, $3)`;
-    
-    // YENİ SORGULAMA YÖNTEMİ: pool.query (callback ile)
     pool.query(sql, [socket.room, socket.username, msg], (err, res) => {
-      if (err) {
-        console.error('Mesaj veritabanına kaydedilirken hata (PostgreSQL):', err);
-      } else {
-        console.log(`Mesaj kaydedildi: [${socket.room}] ${socket.username}: ${msg} (PostgreSQL)`);
-      }
+      if (err) console.error('Mesaj kaydedilirken hata (PostgreSQL):', err);
     });
   });
-
-  // --- Özel Mesaj Gönderme (Değişiklik Yok) ---
   socket.on('private message', (data) => {
     const { to, message } = data;
     const from = socket.username;
@@ -189,8 +215,6 @@ io.on('connection', (socket) => {
       socket.emit('notification', { text: `Hata: '${to}' adlı kullanıcı bulunamadı.` });
     }
   });
-
-  // --- Bağlantı Kesme (Değişiklik Yok) ---
   socket.on('disconnect', () => {
     const userData = connectedUsers[socket.id];
     if (userData) { 
@@ -201,10 +225,10 @@ io.on('connection', (socket) => {
       socket.broadcast.to(room).emit('stop typing', username);
     }
   });
+
 });
 
 // --- 5. Adım: Dükkanı Açma (Değişiklik Yok) ---
-// (Bu, Faz 10.1'de güncellediğimiz esnek port)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Sunucu ${PORT} portunda çalışıyor...`);

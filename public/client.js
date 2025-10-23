@@ -1,10 +1,10 @@
-// === SEVİYE 10.5.3 - GÜNCELLENMİŞ public/client.js ===
+// === SEVİYE 12.3 - GÜNCELLENMİŞ public/client.js ===
 
 const socket = io();
 
 let currentUsername = ''; 
 
-// --- 1. KISIM: HTML Elemanlarını Seçme ---
+// --- 1. KISIM: HTML Elemanlarını Seçme (Değişiklik yok) ---
 const loginScreen = document.getElementById('login-screen');
 const chatContainer = document.getElementById('chat-container'); 
 const loginForm = document.getElementById('login-form');
@@ -17,37 +17,24 @@ const messages = document.getElementById('messages');
 const userList = document.getElementById('user-list');
 const roomNameDisplay = document.getElementById('room-name');
 const typingNotification = document.getElementById('typing-notification');
-
-// YENİ EKLENDİ: Mobil menü elemanlarını seç
 const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 
 // --- 2. KISIM: Olay Dinleyicileri (Kullanıcı Ne Yaptı?) ---
 
-// --- Giriş Yapma İşlemi (Değişiklik yok) ---
+// --- Giriş Yapma, Mobil Menü, Genel Mesaj, Dosya Seçme, Yazıyor, Özel Mesaj ---
+// (Bu bölümlerde HİÇBİR değişiklik yok. Hepsi Seviye 10.5.3 ile aynı)
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault(); 
   if (usernameInput.value && roomInput.value) {
     currentUsername = usernameInput.value; 
-    socket.emit('join chat', {
-      username: currentUsername,
-      room: roomInput.value
-    });
+    socket.emit('join chat', { username: currentUsername, room: roomInput.value });
     loginScreen.style.display = 'none';
     chatContainer.style.display = 'flex'; 
     input.focus(); 
   }
 });
-
-// --- YENİ EKLENDİ: MOBİL MENÜ BUTONU OLAYI ---
-// Hamburger (☰) butonuna tıklandığında...
-menuToggle.addEventListener('click', () => {
-    // 'sidebar' elementinin sınıf listesine 'sidebar-visible' sınıfını
-    // EKLE (eğer yoksa) veya ÇIKAR (eğer varsa).
-    sidebar.classList.toggle('sidebar-visible');
-});
-
-// --- Genel Mesaj Gönderme (Değişiklik yok) ---
+menuToggle.addEventListener('click', () => { sidebar.classList.toggle('sidebar-visible'); });
 form.addEventListener('submit', (e) => {
   e.preventDefault(); 
   if (input.value) {
@@ -56,82 +43,73 @@ form.addEventListener('submit', (e) => {
     input.value = ''; 
   }
 });
-
-// --- Dosya Seçme Olayı (Değişiklik yok) ---
 fileInput.addEventListener('change', () => {
   const file = fileInput.files[0];
   if (!file) return;
-
   const formData = new FormData();
   formData.append('image', file);
-
-  fetch('/upload', {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => {
-    if (!response.ok) {
-      return response.json().then(data => { throw new Error(data.error); });
-    }
-    return response.json();
-  })
-  .then(data => {
-    socket.emit('chat message', data.imageUrl);
-  })
-  .catch(error => {
-    addMessage({ text: `Hata: ${error.message}` }, 'notification');
-  });
-
+  fetch('/upload', { method: 'POST', body: formData })
+    .then(response => {
+      if (!response.ok) return response.json().then(data => { throw new Error(data.error); });
+      return response.json();
+    })
+    .then(data => { socket.emit('chat message', data.imageUrl); })
+    .catch(error => { addMessage({ text: `Hata: ${error.message}` }, 'notification'); });
   fileInput.value = null;
 });
-
-// --- "Yazıyor..." ve Özel Mesaj (Değişiklik yok) ---
 let typingTimer;
 const typingTimeout = 1500; 
 input.addEventListener('keyup', () => {
   socket.emit('typing'); 
   clearTimeout(typingTimer); 
-  typingTimer = setTimeout(() => {
-    socket.emit('stop typing');
-  }, typingTimeout);
+  typingTimer = setTimeout(() => { socket.emit('stop typing'); }, typingTimeout);
 });
 userList.addEventListener('click', (e) => {
   if (e.target && e.target.matches('li.user')) {
     const targetUsername = e.target.textContent; 
     if (targetUsername !== currentUsername) {
       const message = prompt(`Kime: ${targetUsername} - Fısıltınız:`);
-      if (message) {
-        socket.emit('private message', { to: targetUsername, message: message });
-      }
+      if (message) socket.emit('private message', { to: targetUsername, message: message });
     }
   }
 });
 
+
 // --- 3. KISIM: Sunucudan Gelenleri Dinleme ---
 
-// --- addMessage Fonksiyonu (Resimleri Anlıyor) (Değişiklik yok) ---
+// --- GÜNCELLENDİ: addMessage Fonksiyonu (Cloudinary URL'lerini Anlıyor) ---
 function addMessage(data, type) {
   const item = document.createElement('li');
   
   if (type === 'message') {
+    // Gelen/Giden (sağ/sol) ayrımını yap
     if (data.username === currentUsername) {
       item.classList.add('sent');
     } else {
       item.classList.add('received');
     }
-    const isImageMessage = data.message.startsWith('/uploads/');
+
+    // --- İŞTE DEĞİŞİKLİK BURADA! ---
+    // Artık '/uploads/' yerine Cloudinary URL'ini kontrol ediyoruz
+    const isImageMessage = data.message.startsWith('https://res.cloudinary.com/'); 
+    // --- DEĞİŞİKLİK BİTTİ ---
+    
     let messageContent = '';
     if (isImageMessage) {
+      // Mesajı <img> etiketi olarak bas
       messageContent = `<img src="${data.message}" alt="Yüklenen Resim">`;
     } else {
+      // Mesajı normal metin olarak bas
       messageContent = data.message;
     }
+    
     item.innerHTML = `
       <div class="message-bubble ${isImageMessage ? 'image-only' : ''}">
         <span class="username">${data.username}</span>
         ${messageContent}
       </div>
     `;
+    
   } else if (type === 'notification') {
     item.classList.add('notification');
     item.textContent = data.text;
@@ -149,6 +127,8 @@ function addMessage(data, type) {
 }
 
 // --- Diğer Dinleyiciler (Hiç değişiklik yok) ---
+// ('load history' ve 'chat message' artık 'addMessage' fonksiyonu
+//  sayesinde Cloudinary resimlerini otomatik olarak doğru gösterecek)
 socket.on('load history', (history) => {
   history.forEach(data => { addMessage(data, 'message'); });
   addMessage({ text: '--- Mesaj geçmişi yüklendi ---' }, 'notification');
